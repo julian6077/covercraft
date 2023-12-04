@@ -7,7 +7,7 @@ Creates a csv file with a set of 50 tags and their respective match probabilitie
 2. download covercraft
 3. download https://faubox.rrze.uni-erlangen.de/getlink/fiUHdibzNJR42TkwbgfDHQ/
 4. place _internal into dist\covercraft\
-     (covercraft\dist\covercraft\_internal)
+     (covercraft\dist\covercraft\\_internal)
 6. place any song in folder "songs"
 7. run covercraft.exe in dist/covercraft
 8. read created tags.csv file
