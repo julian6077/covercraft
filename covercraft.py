@@ -3,112 +3,88 @@ import os
 import pandas as pd
 import librosa as lb
 import librosa.feature.rhythm
+import matplotlib.pyplot as plt
 from musicnn.tagger import top_tags
 from musicnn.extractor import extractor
 import warnings
 warnings.filterwarnings("ignore")
 
-model = 'MTT_musicnn' # others: 'MTT_vgg', 'MSD_musicnn', 'MSD_musicnn_big' or 'MSD_vgg'
-tags = 'guitar, classical, slow, techno, strings, drums, electronic, rock, fast, piano, ambient, beat, violin, vocal, synth, female, indian, opera, male, singing, vocals, no vocals, harpsichord, loud, quiet, flute, woman, male vocal, no vocal, pop, soft, sitar, solo, man, classic, choir, voice, new age, dance, male voice, female vocal, beats, harp, cello, no voice, weird, country, metal, female voice, choral'
-tags = tags.split(", ")
+def load_songs(directory):
+    return os.listdir(directory)
 
-# create list with given tags
-values = [['Title', 'BPM']]
-for i in range(0,50):
-  values[0].append(tags[i])
+def analyzeSong(song, model, window_duration, tags):
+    """
+    Analyzes a song every (*window_duration*) second(s) using musicnn.
+    (to work properly you should use 3 seconds)
+    Also creates the outline of the data
+    
 
-# read files in dir 'songs' and append the [string] result from func extractor to values
-songs = os.listdir('songs')
-for song in songs:  
- # list.append([song] + top_tags('songs'+'\\'+song, model=model, topN=n))
- taggram, label = extractor('songs'+'\\'+song, model=model, extract_features=False)
- tags_mean = np.mean(taggram, axis=0)
- 
- x, sr = lb.load('songs'+'\\'+song, duration=60)
- onset_env = lb.onset.onset_strength(y=x, sr=sr)
- tempo = int((lb.feature.rhythm.tempo(onset_envelope=onset_env, sr=sr))[0])
- 
- values.append([song] + [tempo] + list(tags_mean))
- 
- 
- 
- 
-# create .csv file  
-pd.DataFrame(values).to_csv('tags.csv', index=False, header=False)
+    Returns a list of song data.
+    """
+    song_duration = lb.get_duration(filename='songs'+'\\'+song)
+    window_start = 0
+    song_data = [['Title', 't in s', 'BPM'] + tags]
+    
+    while window_start + window_duration <= song_duration:
+        taggram, label = extractor('songs'+'\\'+song, model=model, input_length=window_duration, input_overlap=window_start, extract_features=False)
+        tags_mean = np.mean(taggram, axis=0)
+        x, sr = lb.load('songs'+'\\'+song, offset=window_start, duration=window_duration)
+        onset_env = lb.onset.onset_strength(y=x, sr=sr)
+        tempo = int((lb.feature.rhythm.tempo(onset_envelope=onset_env, sr=sr))[0])
+        song_data.append([song, window_start, tempo] + list(tags_mean))
+        window_start += window_duration
+        
+    return song_data
 
+def calculateStdDeviation(song_data):
+  
+    song_data.append(["Standard deviation", None, None])
+    for j in range(3, len(song_data[0])):
+        std_deviation = np.std([float(song_data[i][j]) for i in range(1, (len(song_data))-1)])
+        song_data[len(song_data)-1].append(std_deviation)
+    return song_data
 
+def plotTags(song, values):
+  
+    for j in range(3, len(values[song][0])):
+        tag_values = [float(values[song][i][j]) for i in range(1, (len(values[song]))-1)]
+        plt.plot(tag_values, label=values[song][0][j])
+    plt.xlabel('Time (in 3 second intervals)')
+    plt.ylabel('Tag Probability')
+    plt.legend(loc='upper right')
+    plt.show()
 
+def plotTempo(tempo_data):
+  
+    for song, tempos in tempo_data.items():
+        plt.plot(tempos, label=song)
+    plt.xlabel('Time (in 3 second intervals)')
+    plt.ylabel('Tempo (BPM)')
+    plt.legend(loc='upper right')
+    plt.show()
 
-"""
-import requests
-import pandas as pd
-import json
+def main():
+    model = 'MTT_vgg' # others: 'MTT_vgg', 'MSD_musicnn', 'MSD_musicnn_big' or 'MSD_vgg'
+    tags = 'guitar, classical, slow, techno, strings, drums, electronic, rock, fast, piano, ambient, beat, violin, vocal, synth, female, indian, opera, male, singing, vocals, no vocals, harpsichord, loud, quiet, flute, woman, male vocal, no vocal, pop, soft, sitar, solo, man, classic, choir, voice, new age, dance, male voice, female vocal, beats, harp, cello, no voice, weird, country, metal, female voice, choral'
+    tags = tags.split(", ")
+    songs = load_songs('songs')
+    
+    # create a dictionary where key = song name, value = list of song data
+    values = {}
+    for song in songs:
+        song_data = analyzeSong(song, model, 3, tags)
+        song_data = calculateStdDeviation(song_data)
+        values[song] = song_data
+   
+    # apply analytical functions to each list in the dictionary over time
+    tempo_data = {}
+    for song in values: 
+        # create .csv file  
+        pd.DataFrame(values[song]).to_csv(song[:-4] + '.csv', index=False, header=False)
+        plotTags(song, values)
+        tempos = [row[2] for row in values[song][1:]]
+        tempo_data[song] = tempos
+    # plot tempo for all songs
+    plotTempo(tempo_data)
 
-url = "https://sonoteller-ai1.p.rapidapi.com/music"
-
-payload = { "file": "https://storage.googleapis.com/musikame-files/thefatrat-mayday-feat-laura-brehm-lyriclyrics-videocopyright-free-music.mp3" }
-headers = {
-	"content-type": "application/json",
-	"X-RapidAPI-Key": "KEY",
-	"X-RapidAPI-Host": "sonoteller-ai1.p.rapidapi.com"
-}
-
-response = requests.post(url, json=payload, headers=headers)
-
-response = {
-{
-  'summary': 'The lyrics describe a person lost in outer space, ...',
-  'keywords': [
-    'space',
-    'lost',
-    'darkness',
-    'hope',
-    'help'
-  ],
-  'moods': [
-    {
-      'despair': 100
-    },
-    {
-      'desperation': 100
-    },
-    {
-      'loneliness': 80
-    },
-    {
-      'hopefulness': 60
-    },
-    {
-      'fear': 50
-    }
-  ],
-  'themes': [
-    {
-      'isolation': 100
-    },
-    {
-      'darkness': 80
-    },
-    {
-      'hope': 60
-    },
-    {
-      'desperation': 50
-    },
-    {
-      'crying out for help': 40
-    }
-  ],
-  'language': 'English',
-  'explicit': 'No'
-}
-}
-
-jstring = json.dumps(response)
-print (jstring)
-
-print (response)
-df = pd.DataFrame(response)
-df.to_csv('response.csv')
-print (df)
- """
+main()
