@@ -10,7 +10,7 @@ Creates a csv file with a set of 50 tags and their respective match probabilitie
 4. place any song in folder "songs" under /dist/
 5. run covercraft.exe in dist/covercraft
 6. read created tags.csv file
-7. download "Julians MiDaS" in FauBox: DisC23-24_CoverCraft/(Fabian Bitter)/Team_01 and read readme in dist/run folder
+7. For depth map creation download "Julians MiDaS" in FauBox: DisC23-24_CoverCraft/(Fabian Bitter)/Team_01 and read readme in dist/run folder
 
 ![grafik](https://github.com/julian6077/covercraft/assets/146760878/f2735ec9-1c73-44d3-850b-7884b9a172f0)
 
