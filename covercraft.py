@@ -68,23 +68,22 @@ def plotTempo(tempo_data):
     
 def calculateSimilarity(song_data1, song_data2):
     """
-    Calculates the similarity between two songs
-
-    Returns:
-    The cosine similarity between the two songs 
+    Calculates if two songs are similar
+    two songs are similar if they have the same top5 tags
     """
-    # Get the tag vectors of the two songs
-    tag_vector1 = [row[2:] for row in song_data1[1:-1]]
-    tag_vector2 = [row[2:] for row in song_data2[1:-1]]
+    # reformat song_data
+    tags1 = [row[3:] for row in song_data1[1:-1]]
+    tags2 = [row[3:] for row in song_data2[1:-1]]
 
-    # Calculate the mean of the tag vectors
-    mean_vector1 = np.mean(tag_vector1, axis=0)
-    mean_vector2 = np.mean(tag_vector2, axis=0)
+    # calculate mean of each column
+    mean1 = np.mean(tags1, axis=0)
+    mean2 = np.mean(tags2, axis=0)
+    
+    #  get index of top5 highest mean
+    top5_indices1 = np.argpartition(mean1, -5)[-5:]
+    top5_indices2 = np.argpartition(mean2, -5)[-5:]
 
-    # Calculate the cosine similarity between the mean vectors
-    similarity = cosine_similarity([mean_vector1], [mean_vector2])[0][0]
-
-    return similarity
+    return set(top5_indices1) == set(top5_indices2)
 
 def main():
     
@@ -95,7 +94,6 @@ def main():
     similarity_label = tk.Label(window)
     similarity_label.pack(side=tk.TOP)
     
-    # Create a button to execute the script
     def script():
         model = 'MTT_vgg' # all: 'MTT_vgg', 'MSD_musicnn', 'MSD_musicnn_big' or 'MSD_vgg'
         tags = 'guitar, classical, slow, techno, strings, drums, electronic, rock, fast, piano, ambient, beat, violin, vocal, synth, female, indian, opera, male, singing, vocals, no vocals, harpsichord, loud, quiet, flute, woman, male vocal, no vocal, pop, soft, sitar, solo, man, classic, choir, voice, new age, dance, male voice, female vocal, beats, harp, cello, no voice, weird, country, metal, female voice, choral'
@@ -111,12 +109,12 @@ def main():
         tag_fig = []
         tempo_data = {}
         for song in values: 
+            # create pdf in script dir
             pd.DataFrame(values[song]).to_csv(song[:-4] + '.csv', index=False, header=False)
             tag_fig.append(plotTags(song, values))
             tempos = [row[2] for row in values[song][1:]]
             tempo_data[song] = tempos
         
-
         tempo_fig = plotTempo(tempo_data)
 
         for fig in tag_fig:
@@ -128,13 +126,10 @@ def main():
         tempo_canvas.draw()
         tempo_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-        # calculate similarity between two datasets, todo: should do it automatically if 2 or more songs are availible
-        # maybe useful for the designers, they could skip the simulation of very similar songs?
+        # calculate similarity between two datasets, todo: should do it automatically if more than 2 songs are availible
         if len(values) == 2:
             similarity = calculateSimilarity(values[list(values.keys())[0]], values[list(values.keys())[1]])
-            print(similarity)
-            similarity_label.config(text=f"Similarity: {similarity}")
-            tk.Label(window, text=f"Similarity: {similarity}").pack(side=tk.BOTTOM)   
+            tk.Label(window, text=f"The two songs are similar (same top5 tags): {similarity}").pack(side=tk.BOTTOM)   
     
         plot_height = 400
         total_height = len(tag_fig) * plot_height + plot_height
